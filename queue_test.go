@@ -153,10 +153,11 @@ func TestQueueThreadSafety3(t *testing.T) {
 	wg.Add(10000)
 
 	for i := 0; i < 5000; i++ {
-		go func() {
-			q.Append(i)
+		i := i
+		go func(i2 int) {
+			q.Append(i2)
 			wg.Done()
-		}()
+		}(i)
 	}
 
 	for i := 0; i < 5000; i++ {

@@ -7,7 +7,18 @@ import (
 
 const minQueueLen = 32
 
-type Queue struct {
+type Queue interface {
+	New() *QueueImpl
+	Clean()
+	Length()
+	Append(elem interface{})
+	Prepend(elem interface{})
+	Front() interface{}
+	Back() interface{}
+	Pop() interface{}
+	Remove(elem interface{}) bool
+}
+type QueueImpl struct {
 	uniqueItems       sync.Map
 	items             map[int64]interface{}
 	ids               map[interface{}]int64
@@ -19,8 +30,8 @@ type Queue struct {
 	NotEmpty chan struct{}
 }
 
-func New() *Queue {
-	q := &Queue{
+func New() *QueueImpl {
+	q := &QueueImpl{
 		uniqueItems: sync.Map{},
 		items:       make(map[int64]interface{}),
 		ids:         make(map[interface{}]int64),
@@ -35,7 +46,7 @@ func New() *Queue {
 }
 
 // Removes all elements from queue
-func (q *Queue) Clean() {
+func (q *QueueImpl) Clean() {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -48,7 +59,7 @@ func (q *Queue) Clean() {
 }
 
 // Returns the number of elements in queue
-func (q *Queue) Length() int {
+func (q *QueueImpl) Length() int {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -57,7 +68,7 @@ func (q *Queue) Length() int {
 
 // resizes the queue to fit exactly twice its current contents
 // this can result in shrinking if the queue is less than half-full
-func (q *Queue) resize() {
+func (q *QueueImpl) resize() {
 	newCount := q.count << 1
 
 	if q.count < 2<<18 {
@@ -78,7 +89,7 @@ func (q *Queue) resize() {
 	q.buf = newBuf
 }
 
-func (q *Queue) notify() {
+func (q *QueueImpl) notify() {
 	if len(q.items) > 0 {
 		select {
 		case q.NotEmpty <- struct{}{}:
@@ -89,7 +100,7 @@ func (q *Queue) notify() {
 
 // Append adds one element at the back of the queue
 // Does not append if already in queue
-func (q *Queue) Append(elem interface{}) {
+func (q *QueueImpl) Append(elem interface{}) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -118,7 +129,7 @@ func (q *Queue) Append(elem interface{}) {
 	}
 }
 
-func (q *Queue) newId() int64 {
+func (q *QueueImpl) newId() int64 {
 	for {
 		id := rand.Int63()
 		_, ok := q.items[id]
@@ -129,7 +140,7 @@ func (q *Queue) newId() int64 {
 }
 
 // Adds one element at the front of queue
-func (q *Queue) Prepend(elem interface{}) {
+func (q *QueueImpl) Prepend(elem interface{}) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -153,7 +164,7 @@ func (q *Queue) Prepend(elem interface{}) {
 }
 
 // Previews element at the front of queue
-func (q *Queue) Front() interface{} {
+func (q *QueueImpl) Front() interface{} {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -165,7 +176,7 @@ func (q *Queue) Front() interface{} {
 }
 
 // Previews element at the back of queue
-func (q *Queue) Back() interface{} {
+func (q *QueueImpl) Back() interface{} {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 	id := q.buf[(q.tail-1)&(len(q.buf)-1)]
@@ -175,7 +186,7 @@ func (q *Queue) Back() interface{} {
 	return nil
 }
 
-func (q *Queue) pop() int64 {
+func (q *QueueImpl) pop() int64 {
 	for {
 		if q.count <= 0 {
 			q.notEmpty.Wait()
@@ -202,7 +213,7 @@ func (q *Queue) pop() int64 {
 
 // Pop removes and returns the element from the front of the queue.
 // If the queue is empty, it will block
-func (q *Queue) Pop() interface{} {
+func (q *QueueImpl) Pop() interface{} {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
@@ -222,7 +233,7 @@ func (q *Queue) Pop() interface{} {
 }
 
 // Removes one element from the queue
-func (q *Queue) Remove(elem interface{}) bool {
+func (q *QueueImpl) Remove(elem interface{}) bool {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
