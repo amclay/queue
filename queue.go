@@ -97,6 +97,7 @@ func (q *Queue) Append(elem interface{}) {
 	if _, ok := q.uniqueItems.Load(elem); ok {
 		return
 	}
+	q.uniqueItems.Store(elem, struct{}{})
 
 	if q.count == len(q.buf) {
 		q.resize()
