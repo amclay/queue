@@ -8,6 +8,7 @@ import (
 const minQueueLen = 32
 
 type Queue struct {
+	uniqueItems       sync.Map
 	items             map[int64]interface{}
 	ids               map[interface{}]int64
 	buf               []int64
@@ -20,11 +21,12 @@ type Queue struct {
 
 func New() *Queue {
 	q := &Queue{
-		items:    make(map[int64]interface{}),
-		ids:      make(map[interface{}]int64),
-		buf:      make([]int64, minQueueLen),
-		mutex:    &sync.Mutex{},
-		NotEmpty: make(chan struct{}, 1),
+		uniqueItems: sync.Map{},
+		items:       make(map[int64]interface{}),
+		ids:         make(map[interface{}]int64),
+		buf:         make([]int64, minQueueLen),
+		mutex:       &sync.Mutex{},
+		NotEmpty:    make(chan struct{}, 1),
 	}
 
 	q.notEmpty = sync.NewCond(q.mutex)
@@ -85,13 +87,19 @@ func (q *Queue) notify() {
 	}
 }
 
-// Adds one element at the back of the queue
+// Append adds one element at the back of the queue
+// Does not append if already in queue
 func (q *Queue) Append(elem interface{}) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
 	if q.count == len(q.buf) {
 		q.resize()
+	}
+
+	// only add unique items
+	if _, ok := q.uniqueItems.Load(elem); ok {
+		return
 	}
 
 	id := q.newId()
@@ -205,6 +213,7 @@ func (q *Queue) Pop() interface{} {
 		if ok {
 			delete(q.ids, item)
 			delete(q.items, id)
+			q.uniqueItems.Delete(item)
 			q.notify()
 			return item
 		}
