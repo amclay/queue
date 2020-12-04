@@ -93,13 +93,13 @@ func (q *Queue) Append(elem interface{}) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
-	if q.count == len(q.buf) {
-		q.resize()
-	}
-
 	// only add unique items
 	if _, ok := q.uniqueItems.Load(elem); ok {
 		return
+	}
+
+	if q.count == len(q.buf) {
+		q.resize()
 	}
 
 	id := q.newId()
