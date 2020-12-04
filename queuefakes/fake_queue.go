@@ -37,9 +37,15 @@ type FakeQueue struct {
 	frontReturnsOnCall map[int]struct {
 		result1 interface{}
 	}
-	LengthStub        func()
+	LengthStub        func() int
 	lengthMutex       sync.RWMutex
 	lengthArgsForCall []struct {
+	}
+	lengthReturns struct {
+		result1 int
+	}
+	lengthReturnsOnCall map[int]struct {
+		result1 int
 	}
 	NewStub        func() *queue.QueueImpl
 	newMutex       sync.RWMutex
@@ -239,15 +245,21 @@ func (fake *FakeQueue) FrontReturnsOnCall(i int, result1 interface{}) {
 	}{result1}
 }
 
-func (fake *FakeQueue) Length() {
+func (fake *FakeQueue) Length() int {
 	fake.lengthMutex.Lock()
+	ret, specificReturn := fake.lengthReturnsOnCall[len(fake.lengthArgsForCall)]
 	fake.lengthArgsForCall = append(fake.lengthArgsForCall, struct {
 	}{})
 	fake.recordInvocation("Length", []interface{}{})
 	fake.lengthMutex.Unlock()
 	if fake.LengthStub != nil {
-		fake.LengthStub()
+		return fake.LengthStub()
 	}
+	if specificReturn {
+		return ret.result1
+	}
+	fakeReturns := fake.lengthReturns
+	return fakeReturns.result1
 }
 
 func (fake *FakeQueue) LengthCallCount() int {
@@ -256,10 +268,33 @@ func (fake *FakeQueue) LengthCallCount() int {
 	return len(fake.lengthArgsForCall)
 }
 
-func (fake *FakeQueue) LengthCalls(stub func()) {
+func (fake *FakeQueue) LengthCalls(stub func() int) {
 	fake.lengthMutex.Lock()
 	defer fake.lengthMutex.Unlock()
 	fake.LengthStub = stub
+}
+
+func (fake *FakeQueue) LengthReturns(result1 int) {
+	fake.lengthMutex.Lock()
+	defer fake.lengthMutex.Unlock()
+	fake.LengthStub = nil
+	fake.lengthReturns = struct {
+		result1 int
+	}{result1}
+}
+
+func (fake *FakeQueue) LengthReturnsOnCall(i int, result1 int) {
+	fake.lengthMutex.Lock()
+	defer fake.lengthMutex.Unlock()
+	fake.LengthStub = nil
+	if fake.lengthReturnsOnCall == nil {
+		fake.lengthReturnsOnCall = make(map[int]struct {
+			result1 int
+		})
+	}
+	fake.lengthReturnsOnCall[i] = struct {
+		result1 int
+	}{result1}
 }
 
 func (fake *FakeQueue) New() *queue.QueueImpl {

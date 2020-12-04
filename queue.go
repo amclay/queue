@@ -10,7 +10,7 @@ const minQueueLen = 32
 type Queue interface {
 	New() *QueueImpl
 	Clean()
-	Length()
+	Length() int
 	Append(elem interface{})
 	Prepend(elem interface{})
 	Front() interface{}
